@@ -1,0 +1,79 @@
+package com.example.p11.viewmodel
+
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.p11.modeldata.DataSiswa
+import com.example.p11.repositori.RepositoryDataSiswa
+import kotlinx.coroutines.launch
+
+class EntryViewModel(private val repositoryDataSiswa: RepositoryDataSiswa) : ViewModel() {
+    var uiStateSiswa by mutableStateOf(UIStateSiswa())
+        private set
+
+    fun updateUiState(detailSiswa: DetailSiswa) {
+        uiStateSiswa = UIStateSiswa(
+            detailSiswa = detailSiswa,
+            isEntryValid = validasiInput(detailSiswa)
+        )
+    }
+
+    private fun validasiInput(uiState: DetailSiswa = uiStateSiswa.detailSiswa): Boolean {
+        return with(uiState) {
+            nama.isNotBlank() && alamat.isNotBlank() && telpon.isNotBlank()
+        }
+    }
+
+    fun addSiswa(onSuccess: () -> Unit) {
+        if (validasiInput()) {
+            viewModelScope.launch {
+                try {
+                    val response = repositoryDataSiswa.postDataSiswa(
+                        uiStateSiswa.detailSiswa.toDataSiswa()
+                    )
+                    if (response.isSuccessful) {
+                        println("Sukses Tambah Data : ${response.message()}")
+                        onSuccess()
+                    } else {
+                        println("Gagal tambah data : ${response.code()} ${response.errorBody()?.string()}")
+                    }
+                } catch (e: Exception) {
+                    println("Error jaringan saat tambah data: ${e.message}")
+                }
+            }
+        }
+    }
+}
+
+data class UIStateSiswa(
+    val detailSiswa: DetailSiswa = DetailSiswa(),
+    val isEntryValid: Boolean = false
+)
+
+data class DetailSiswa(
+    val id: Int = 0,
+    val nama: String = "",
+    val alamat: String = "",
+    val telpon: String = ""
+)
+
+fun DetailSiswa.toDataSiswa(): DataSiswa = DataSiswa(
+    id = id,
+    nama = nama,
+    alamat = alamat,
+    telpon = telpon
+)
+
+fun DataSiswa.toUiStateSiswa(isEntryValid: Boolean = false): UIStateSiswa = UIStateSiswa(
+    detailSiswa = this.toDetailSiswa(),
+    isEntryValid = isEntryValid
+)
+
+fun DataSiswa.toDetailSiswa(): DetailSiswa = DetailSiswa(
+    id = id,
+    nama = nama,
+    alamat = alamat,
+    telpon = telpon
+)
